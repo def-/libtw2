@@ -40,6 +40,12 @@ mod json {
     pub struct InfoSerial(pub Timestamp);
 
     #[derive(Serialize)]
+    #[serde(rename_all = "snake_case")]
+    pub enum EntryKind {
+        Backcompat,
+    }
+
+    #[derive(Serialize)]
     pub struct Dump<'a> {
         pub now: Timestamp,
         pub secrets: HashMap<Addr, SecretInfo>,
@@ -47,6 +53,7 @@ mod json {
     }
     #[derive(Serialize)]
     pub struct SecretInfo {
+        pub kind: EntryKind,
         pub ping_time: Timestamp,
         pub secret: Uuid,
     }
@@ -267,6 +274,7 @@ impl Tracker {
                         let server_addr = ServerAddr::new(version, addr);
                         if let Some(e) = servers.get(&server_addr) {
                             assert!(dump.secrets.insert(json::Addr(server_addr), json::SecretInfo {
+                                kind: json::EntryKind::Backcompat,
                                 ping_time: e.ping_time,
                                 secret,
                             }).is_none());

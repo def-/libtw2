@@ -45,7 +45,7 @@ fn main() {
             .long("filename")
             .takes_value(true)
             .value_name("FILENAME")
-            .default_value("servers.json")
+            .default_value("dump.json")
             .help("Output filename (only used for json tracker)")
         )
         .arg(Arg::with_name("locations")

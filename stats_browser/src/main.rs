@@ -52,7 +52,7 @@ fn main() {
             .long("locations")
             .takes_value(true)
             .value_name("LOCATIONS")
-            .help("IP to continent locations database filename (only used for json tracker, CSV file with network,continent_code header))")
+            .help("IP to continent locations database filename (only used for json tracker, CSV file with network,continent_code header)")
         )
         .arg(Arg::with_name("seed")
             .long("seed")

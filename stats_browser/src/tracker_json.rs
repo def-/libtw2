@@ -7,6 +7,7 @@ use ipnet::Ipv4Net;
 use serverbrowse::protocol::ClientInfo;
 use serverbrowse::protocol::IpAddr;
 use serverbrowse::protocol::ServerInfo;
+use std::collections::BTreeMap;
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::fmt;
@@ -27,7 +28,7 @@ mod json {
     use addr;
     use arrayvec::ArrayString;
     use serverbrowse::protocol;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
     use std::convert::TryFrom;
     use std::convert::TryInto;
     use std::fmt::Write;
@@ -46,8 +47,9 @@ mod json {
     #[derive(Serialize)]
     pub struct Dump<'a> {
         pub now: Timestamp,
-        pub addresses: HashMap<Addr, AddrInfo>,
-        pub servers: HashMap<Uuid, Server<'a>>,
+        // Use `BTreeMap`s so the serialization is stable.
+        pub addresses: BTreeMap<Addr, AddrInfo>,
+        pub servers: BTreeMap<Uuid, Server<'a>>,
     }
     #[derive(Serialize)]
     pub struct AddrInfo {
@@ -249,8 +251,8 @@ impl Tracker {
 
                 let mut dump = json::Dump {
                     now: self.timekeeper.now(),
-                    addresses: HashMap::new(),
-                    servers: HashMap::new(),
+                    addresses: BTreeMap::new(),
+                    servers: BTreeMap::new(),
                 };
                 for &addr in &addresses {
                     let secret = Uuid::new_v5(&self.secret_seed, addr.to_string().as_bytes());

@@ -37,8 +37,6 @@ mod json {
     #[derive(Eq, Hash, Ord, PartialEq, PartialOrd)]
     pub struct Addr(pub addr::ServerAddr);
 
-    pub struct InfoSerial(pub Timestamp);
-
     #[derive(Serialize)]
     #[serde(rename_all = "snake_case")]
     pub enum EntryKind {
@@ -48,20 +46,20 @@ mod json {
     #[derive(Serialize)]
     pub struct Dump<'a> {
         pub now: Timestamp,
-        pub secrets: HashMap<Addr, SecretInfo>,
+        pub addresses: HashMap<Addr, AddrInfo>,
         pub servers: HashMap<Uuid, Server<'a>>,
     }
     #[derive(Serialize)]
-    pub struct SecretInfo {
+    pub struct AddrInfo {
         pub kind: EntryKind,
         pub ping_time: Timestamp,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        pub location: Option<ArrayString<[u8; 15]>>,
         pub secret: Uuid,
     }
     #[derive(Serialize)]
     pub struct Server<'a> {
-        #[serde(skip_serializing_if = "Option::is_none")]
-        pub location: Option<ArrayString<[u8; 15]>>,
-        pub info_serial: InfoSerial,
+        pub info_serial: Timestamp,
         pub info: &'a ServerInfo,
     }
     #[derive(Serialize)]
@@ -99,19 +97,6 @@ mod json {
                 addr::ProtocolVersion::V7 => "tw-0.7+udp://",
             });
             write!(result, "{}", self.0.addr).unwrap();
-            serializer.serialize_str(&result)
-        }
-    }
-
-    impl serde::Serialize for InfoSerial {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error> where
-            S: serde::Serializer,
-        {
-            let mut number: ArrayString<[u8; 16]> = ArrayString::new();
-            write!(&mut number, "{}", self.0).unwrap();
-            let mut result: ArrayString<[u8; 16]> = ArrayString::new();
-            result.push(('a' as u8 + number.len() as u8) as char);
-            result.push_str(&number);
             serializer.serialize_str(&result)
         }
     }
@@ -264,7 +249,7 @@ impl Tracker {
 
                 let mut dump = json::Dump {
                     now: self.timekeeper.now(),
-                    secrets: HashMap::new(),
+                    addresses: HashMap::new(),
                     servers: HashMap::new(),
                 };
                 for &addr in &addresses {
@@ -273,9 +258,10 @@ impl Tracker {
                     for &version in PROTOCOL_VERSIONS_PRIORITY {
                         let server_addr = ServerAddr::new(version, addr);
                         if let Some(e) = servers.get(&server_addr) {
-                            assert!(dump.secrets.insert(json::Addr(server_addr), json::SecretInfo {
+                            assert!(dump.addresses.insert(json::Addr(server_addr), json::AddrInfo {
                                 kind: json::EntryKind::Backcompat,
                                 ping_time: e.ping_time,
+                                location: e.location,
                                 secret,
                             }).is_none());
                             entry = Some(e);
@@ -284,8 +270,7 @@ impl Tracker {
                     let entry = entry.unwrap();
                     if let Some(i) = &entry.info {
                         dump.servers.insert(secret, json::Server {
-                            location: entry.location,
-                            info_serial: json::InfoSerial(entry.ping_time),
+                            info_serial: entry.ping_time,
                             info: i,
                         });
                     }
